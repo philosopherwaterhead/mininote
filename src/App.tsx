@@ -49,6 +49,8 @@ export default function App() {
   // PROJECTS
   //
 
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+
   const [projects, setProjects] =
     useState<Project[]>([])
 
@@ -122,6 +124,10 @@ export default function App() {
           allProjects[0].id
         )
       }
+          // ★ここ追加：起動時自動復元
+      setTimeout(() => {
+        restoreFromR2()
+      }, 300)
     }
 
     init()
@@ -482,6 +488,19 @@ export default function App() {
         height: "100vh",
       }}
     >
+      <button
+        onClick={() => setSidebarOpen(v => !v)}
+        style={{
+          position: "absolute",
+          top: 10,
+          left: 10,
+          zIndex: 1000,
+        }}
+      >
+        ☰
+      </button>
+      {sidebarOpen && (
+        <>
       {/* PROJECTS */}
       <div
         style={{
@@ -776,6 +795,8 @@ export default function App() {
           ))}
         </div>
       </div>
+        </>
+      )}
 
       {/* EDITOR */}
       <div
