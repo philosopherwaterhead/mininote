@@ -1,0 +1,1248 @@
+import React,{
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
+
+import {
+  getProjects,
+  saveProject,
+  deleteProject,
+
+  getNotesByProject,
+  saveNote,
+  deleteNote,
+  exportData,
+  importData,
+
+  type Project,
+  type Note,
+} from "./db"
+
+import {
+  encryptString,
+  decryptString,
+} from "./crypto"
+
+import CodeMirror from "@uiw/react-codemirror"
+
+import {
+  markdown,
+} from "@codemirror/lang-markdown"
+
+import {
+  EditorView,
+  keymap,
+} from "@codemirror/view"
+
+import {
+  syntaxHighlighting,
+  HighlightStyle,
+} from "@codemirror/language"
+
+import {
+  tags,
+} from "@lezer/highlight"
+
+export default function App() {
+  //
+  // PROJECTS
+  //
+
+  const [projects, setProjects] =
+    useState<Project[]>([])
+
+  const [
+    selectedProjectId,
+    setSelectedProjectId,
+  ] = useState<string | null>(null)
+
+  const [
+    editingPassword,
+    setEditingPassword,
+  ] = useState("")
+
+  const [
+    activePassword,
+    setActivePassword,
+  ] = useState("")
+
+  const [
+    workerUrl,
+    setWorkerUrl,
+  ] = useState(
+    localStorage.getItem(
+      "worker-url"
+    ) || ""
+  )
+
+  //
+  // NOTES
+  //
+
+
+  const [notes, setNotes] = useState<
+    Note[]
+  >([])
+
+  const [
+    selectedNoteId,
+    setSelectedNoteId,
+  ] = useState<string | null>(null)
+
+  const [
+    noteSearch,
+    setNoteSearch,
+  ] = useState("")
+
+  //
+  // 初期読み込み
+  //
+
+  const [
+    saveStatus,
+    setSaveStatus,
+  ] = useState("Saved")
+
+  useEffect(() => {
+    async function init() {
+      const allProjects =
+        await getProjects()
+
+        setProjects(
+          allProjects.sort(
+            (a, b) =>
+              b.updatedAt -
+              a.updatedAt
+          )
+        )
+
+      if (allProjects.length > 0) {
+        setSelectedProjectId(
+          allProjects[0].id
+        )
+      }
+    }
+
+    init()
+  }, [])
+
+  //
+  // project変更時
+  //
+
+  useEffect(() => {
+    async function loadNotes() {
+      if (!selectedProjectId) {
+        setNotes([])
+
+        return
+      }
+
+      const result =
+        await getNotesByProject(
+          selectedProjectId
+        )
+
+        setNotes(
+          result.sort(
+            (a, b) =>
+              b.updatedAt -
+              a.updatedAt
+          )
+        )
+
+      if (result.length > 0) {
+        setSelectedNoteId(
+          result[0].id
+        )
+      } else {
+        setSelectedNoteId(null)
+      }
+    }
+
+    loadNotes()
+  }, [selectedProjectId])
+
+  //
+  // selected note
+  //
+
+  const selectedNote = useMemo(() => {
+    return notes.find(
+      (n) => n.id === selectedNoteId
+    )
+  }, [notes, selectedNoteId])
+
+  const wikiLinks = useMemo(() => {
+    if (!selectedNote) return []
+
+    const matches =
+      selectedNote.content.match(
+        /\[\[(.*?)\]\]/g
+      ) || []
+
+    return matches
+      .map((match) =>
+        match.slice(2, -2)
+      )
+      .filter(
+        (title, index, self) =>
+          self.indexOf(title) ===
+          index
+      )
+  }, [selectedNote])
+
+  useEffect(() => {
+    if (
+      selectedNoteId &&
+      !notes.some(
+        (n) => n.id === selectedNoteId
+      )
+    ) {
+      setSelectedNoteId(
+        notes[0]?.id ?? null
+      )
+    }
+  }, [notes, selectedNoteId])
+
+  const filteredNotes =
+    notes.filter((note) =>
+      note.title
+        .toLowerCase()
+        .includes(
+          noteSearch.toLowerCase()
+        )
+    )
+
+  const [
+    backupDirHandle,
+    setBackupDirHandle,
+  ] = useState<any>(null)
+
+  //
+  // project作成
+  //
+
+  async function createProject() {
+    const newProject: Project = {
+      id: crypto.randomUUID(),
+
+      name: "New Project",
+
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    await saveProject(newProject)
+
+    setProjects((prev) => [
+      newProject,
+      ...prev,
+    ])
+
+    setSelectedProjectId(
+      newProject.id
+    )
+  }
+
+  function updateProjectName(
+    projectId: string,
+    name: string
+  ) {
+    const target = projects.find(
+      (p) => p.id === projectId
+    )
+
+    if (!target) return
+
+    const updated: Project = {
+      ...target,
+
+      name,
+
+      updatedAt: Date.now(),
+    }
+
+    setProjects((prev) =>
+      prev
+        .map((project) =>
+          project.id === projectId
+            ? updated
+            : project
+        )
+        .sort(
+          (a, b) =>
+            b.updatedAt -
+            a.updatedAt
+        )
+    )
+
+    saveProject(updated)
+  }
+  
+  async function removeProject(projectId: string) 
+  {
+      await deleteProject(projectId)
+
+      const next = projects.filter(
+        (p) => p.id !== projectId
+      )
+
+      setProjects(next)
+
+      if (
+        selectedProjectId === projectId
+      ) {
+        setSelectedProjectId(
+          next[0]?.id ?? null
+        )
+      }
+    }
+
+  //
+  // note作成
+  //
+
+  async function createNote() {
+    if (!selectedProjectId) return
+
+    const newNote: Note = {
+      id: crypto.randomUUID(),
+
+      projectId:
+        selectedProjectId,
+
+      title: "Untitled",
+      content: "",
+
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    await saveNote(newNote)
+
+    setNotes((prev) => [
+      newNote,
+      ...prev,
+    ])
+
+    setSelectedNoteId(
+      newNote.id
+    )
+  }
+
+  async function removeNote(
+  noteId: string
+  ) {
+    await deleteNote(noteId)
+
+    const next = notes.filter(
+      (n) => n.id !== noteId
+    )
+
+    setNotes(next)
+
+    if (
+      selectedNoteId === noteId
+    ) {
+      setSelectedNoteId(
+        next[0]?.id ?? null
+      )
+    }
+  }
+
+  //
+  // note更新
+  //
+
+  function updateNoteContent(
+    content: string
+  ) {
+    if (!selectedNote) return
+
+   setSaveStatus("Saving...") 
+
+    const updated: Note = {
+      ...selectedNote,
+
+      content,
+
+
+      updatedAt: Date.now(),
+    }
+
+      setNotes((prev) =>
+        prev
+          .map((note) =>
+            note.id === updated.id
+              ? updated
+              : note
+          )
+          .sort(
+            (a, b) =>
+              b.updatedAt -
+              a.updatedAt
+          )
+      )
+  }
+
+  function updateNoteTitle(
+    title: string
+  ) {
+    if (!selectedNote) return
+
+    const updated: Note = {
+      ...selectedNote,
+
+      title,
+
+      updatedAt: Date.now(),
+    }
+
+    setNotes((prev) =>
+      prev
+        .map((note) =>
+          note.id === updated.id
+            ? updated
+            : note
+        )
+        .sort(
+          (a, b) =>
+            b.updatedAt -
+            a.updatedAt
+        )
+    )
+  }
+
+  //
+  // debounce保存
+  //
+
+  useEffect(() => {
+    if (!selectedNote) return
+
+    const timer = setTimeout(() => {
+      saveNote(selectedNote)
+
+      if (backupDirHandle) {
+        ;(async () => {
+          const permission =
+            await backupDirHandle.queryPermission({
+              mode: "readwrite",
+            })
+
+          if (permission !== "granted") {
+            setSaveStatus(
+              "Backup permission lost"
+            )
+
+            return
+          }
+
+          const data =
+            await exportData()
+
+          const fileHandle =
+            await backupDirHandle.getFileHandle(
+              "notes-backup.json",
+              {
+                create: true,
+              }
+            )
+
+          const writable =
+            await fileHandle.createWritable()
+
+          await writable.write(
+            JSON.stringify(
+              data,
+              null,
+              2
+            )
+          )
+
+          await writable.close()
+        })()
+      }
+
+      uploadEncryptedBackup()
+      setSaveStatus("Saved")
+    }, 500)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [selectedNote])
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        height: "100vh",
+      }}
+    >
+      {/* PROJECTS */}
+      <div
+        style={{
+          width: 240,
+          borderRight:
+            "1px solid #ccc",
+          padding: 12,
+        }}
+      >
+
+        <h2>Projects</h2>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <input
+            type="password"
+            placeholder="Encryption Password"
+            value={editingPassword}
+            onChange={(e) =>
+              setEditingPassword(
+                e.target.value
+              )
+            }
+            style={{
+              width: "100%",
+            }}
+          />
+
+          <button
+            onClick={() =>
+              setActivePassword(
+                editingPassword
+              )
+            }
+          >
+            Set Password
+          </button>
+
+          <div
+            style={{
+              fontSize: 12,
+              color: "#666",
+            }}
+          >
+            {activePassword
+              ? "Password loaded"
+              : "No password"}
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <input
+            placeholder="Worker URL"
+            value={workerUrl}
+            onChange={(e) =>
+              setWorkerUrl(
+                e.target.value
+              )
+            }
+          />
+
+          <button
+            onClick={saveWorkerUrl}
+          >
+            Save Worker URL
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+
+            marginTop: 12,
+            marginBottom: 12,
+          }}
+        >
+          <button
+            onClick={
+              handlePlainExport
+            }
+          >
+            Export JSON
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Import JSON</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={
+                handlePlainImport
+              }
+            />
+          </div>
+
+          <button
+            onClick={
+              handleEncryptedExport
+            }
+          >
+            Export Encrypted
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Import Encrypted</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={
+                handleEncryptedImport
+              }
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={restoreFromR2}
+        >
+          Restore From R2
+        </button>
+
+        <button
+          onClick={selectBackupFolder}
+        >
+          Select Backup Folder
+        </button>
+
+        <button
+          onClick={createProject}
+        >
+          New Project
+        </button>
+
+        <div
+          style={{
+            marginTop: 12,
+          }}
+        >
+          {projects.map((project) => (
+            <div
+              key={project.id}
+              onClick={() =>
+                setSelectedProjectId(
+                  project.id
+                )
+              }
+              style={{
+                padding: 8,
+                cursor: "pointer",
+
+                background:
+                  project.id ===
+                  selectedProjectId
+                    ? "#eee"
+                    : "transparent",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <input
+                  value={project.name}
+                  onChange={(e) =>
+                    updateProjectName(
+                      project.id,
+                      e.target.value
+                    )
+                  }
+                  onClick={(e) =>
+                    e.stopPropagation()
+                  }
+                  style={{
+                    flex: 1,
+                  }}
+                />
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+
+                    removeProject(project.id)
+                  }}
+                >
+                  x
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* NOTES */}
+      <div
+        style={{
+          width: 240,
+          borderRight:
+            "1px solid #ccc",
+          padding: 12,
+        }}
+      >
+        <h2>Notes</h2>
+
+        <input
+          placeholder="Search notes"
+          value={noteSearch}
+          onChange={(e) =>
+            setNoteSearch(
+              e.target.value
+            )
+          }
+          style={{
+            width: "100%",
+            marginBottom: 12,
+          }}
+        />
+
+        <button
+          onClick={createNote}
+          disabled={
+            !selectedProjectId
+          }
+        >
+          New Note
+        </button>
+
+        <div
+          style={{
+            marginTop: 12,
+          }}
+        >
+          {filteredNotes.map((note) => (
+            <div
+              key={note.id}
+              onClick={() =>
+                setSelectedNoteId(
+                  note.id
+                )
+              }
+              style={{
+                padding: 8,
+                cursor: "pointer",
+
+                background:
+                  note.id ===
+                  selectedNoteId
+                    ? "#eee"
+                    : "transparent",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <span>{note.title}</span>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+
+                    removeNote(note.id)
+                  }}
+                >
+                  x
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* EDITOR */}
+      <div
+        style={{
+          flex: 1,
+          padding: 16,
+        }}
+      >
+      {selectedNote ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            gap: 12,
+            alignItems: "stretch",
+          }}
+        >
+
+          <div
+            style={{
+              fontSize: 12,
+              color: "#666",
+            }}
+          >
+            {saveStatus}
+          </div>
+
+          {wikiLinks.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              {wikiLinks.map((title) => {
+                const target =
+                  notes.find(
+                    (n) =>
+                      n.title === title
+                  )
+
+                return (
+                  <button
+                    key={title}
+                    onClick={() => {
+                      if (target) {
+                        setSelectedNoteId(
+                          target.id
+                        )
+                      }
+                    }}
+
+                    style={{
+                      background: target
+                        ? "#eee"
+                        : "#ffdddd",
+
+                      border: "1px solid #ccc",
+
+                      borderColor: target
+                        ? "#ccc"
+                        : "#ff6666",
+
+                      cursor: target
+                        ? "pointer"
+                        : "not-allowed",
+
+                      padding: "4px 8px",
+                    }}
+                  >
+                    [[{title}]]
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <input
+            value={selectedNote.title}
+            onChange={(e) =>
+              updateNoteTitle(
+                e.target.value
+              )
+            }
+            placeholder="Title"
+            style={{
+              fontSize: 24,
+              padding: 8,
+            }}
+          />
+
+            <CodeMirror
+              value={selectedNote.content}
+              height="100%"
+              extensions={[
+                markdown(),
+                EditorView.lineWrapping,
+
+                keymap.of([
+                  {
+                    key: "Mod-s",
+
+                    run: () => {
+                      if (selectedNote) {
+                        saveNote(selectedNote)
+
+                        console.log("saved")
+                      }
+
+                      return true
+                    },
+                  },
+                ]),
+
+                EditorView.theme({
+                  "&": {
+                    fontSize: "16px",
+                    textAlign: "left",
+                  },
+
+                  ".cm-content": {
+                    fontFamily:
+                      "sans-serif",
+
+                    padding: "16px",
+
+                    lineHeight: "1.6",
+
+                    textAlign: "left",
+
+                    whiteSpace: "pre-wrap",
+                  },
+
+                  ".cm-line": {
+                    textAlign: "left",
+                  },
+
+                  ".cm-header-1": {
+                    fontSize: "2em",
+                    fontWeight: "bold",
+                  },
+
+                  ".cm-header-2": {
+                    fontSize: "1.5em",
+                    fontWeight: "bold",
+                  },
+
+                  ".cm-header-3": {
+                    fontSize: "1.2em",
+                    fontWeight: "bold",
+                  },
+                }),
+                  syntaxHighlighting(
+                    HighlightStyle.define([
+                      {
+                        tag: tags.heading1,
+                        fontSize: "2em",
+                        fontWeight: "bold",
+                      },
+
+                      {
+                        tag: tags.heading2,
+                        fontSize: "1.5em",
+                        fontWeight: "bold",
+                      },
+
+                      {
+                        tag: tags.heading3,
+                        fontSize: "1.2em",
+                        fontWeight: "bold",
+                      },
+
+                      {
+                        tag: tags.quote,
+                        color: "#666",
+                        fontStyle: "italic",
+                      },
+
+                      {
+                        tag: tags.monospace,
+                        fontFamily: "monospace",
+                        backgroundColor: "#f0f0f0",
+                      },
+
+                      {
+                        tag: tags.link,
+                        color: "#3b82f6",
+                        textDecoration: "underline",
+                      },
+
+                      {
+                        tag: tags.strong,
+                        fontWeight: "bold",
+                      },
+
+                      {
+                        tag: tags.emphasis,
+                        fontStyle: "italic",
+                      },
+                    ])
+                  ),
+              ]}
+              onChange={(value) =>
+                updateNoteContent(value)
+              }
+            />
+        </div>
+      ) : (
+        <p>No note selected</p>
+      )}
+      </div>
+    </div>
+  )
+
+  async function handlePlainExport() {
+    const data = await exportData()
+
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          data,
+          null,
+          2
+        ),
+      ],
+      {
+        type: "application/json",
+      }
+    )
+
+    const url =
+      URL.createObjectURL(blob)
+
+    const a =
+      document.createElement("a")
+
+    a.href = url
+
+    a.download =
+      "notes-backup.json"
+
+    a.click()
+
+    URL.revokeObjectURL(url)
+  }
+
+  async function handleEncryptedExport() {
+    if (!activePassword) {
+      alert(
+        "Password required"
+      )
+
+      return
+    }
+
+    const data = await exportData()
+
+    const json =
+      JSON.stringify(data)
+
+    const encrypted =
+      await encryptString(
+        json,
+        activePassword
+      )
+
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          encrypted,
+          null,
+          2
+        ),
+      ],
+      {
+        type: "application/json",
+      }
+    )
+
+    const url =
+      URL.createObjectURL(blob)
+
+    const a =
+      document.createElement("a")
+
+    a.href = url
+
+    a.download =
+      "notes-backup.enc.json"
+
+    a.click()
+
+    URL.revokeObjectURL(url)
+  }
+
+  async function handlePlainImport(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file =
+      event.target.files?.[0]
+
+    if (!file) return
+
+    const text =
+      await file.text()
+
+    const data = JSON.parse(text)
+
+    await importData(data)
+
+    location.reload()
+  }
+
+  async function handleEncryptedImport(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    if (!activePassword) {
+      alert(
+        "Password required"
+      )
+
+      return
+    }
+
+    const file =
+      event.target.files?.[0]
+
+    if (!file) return
+
+    try {
+      const text =
+        await file.text()
+
+      const encrypted =
+        JSON.parse(text)
+
+      const json =
+        await decryptString(
+          encrypted,
+          activePassword
+        )
+
+      const data =
+        JSON.parse(json)
+
+      await importData(data)
+
+      location.reload()
+    } catch {
+      alert(
+        "Decrypt failed"
+      )
+    }
+  }
+
+    async function uploadEncryptedBackup() {
+    if (!activePassword) {
+      return
+    }
+
+    try {
+      const data =
+        await exportData()
+
+      const json =
+        JSON.stringify(data)
+
+      const encrypted =
+        await encryptString(
+          json,
+          activePassword
+        )
+
+      await fetch(
+        `${workerUrl}/upload`,
+        {
+          method: "PUT",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify(
+            encrypted
+          ),
+        }
+      )
+
+      console.log(
+        "R2 backup uploaded"
+      )
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  async function restoreFromR2() {
+    if (!activePassword) {
+      alert(
+        "Password required"
+      )
+
+      return
+    }
+
+    try {
+      const response =
+        await fetch(
+          `${workerUrl}/latest`
+        )
+
+      if (!response.ok) {
+        alert("No backup found")
+
+        return
+      }
+
+      const encrypted =
+        await response.json()
+
+      const json =
+        await decryptString(
+          encrypted,
+          activePassword
+        )
+
+      const data =
+        JSON.parse(json)
+
+      await importData(data)
+
+      alert(
+        "Restore completed"
+      )
+
+      location.reload()
+    } catch (error) {
+      console.error(error)
+
+      alert(
+        "Restore failed"
+      )
+    }
+  }
+
+  function saveWorkerUrl() {
+    localStorage.setItem(
+      "worker-url",
+      workerUrl
+    )
+
+    alert("Worker URL saved")
+  }
+
+  async function selectBackupFolder() {
+    try {
+      const dir =
+        await window.showDirectoryPicker()
+
+      setBackupDirHandle(dir)
+
+      alert("Backup folder selected")
+    } catch {
+      alert("Folder selection cancelled")
+    }
+  }
+}
