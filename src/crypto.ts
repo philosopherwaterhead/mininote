@@ -75,7 +75,7 @@ async function deriveKey(
     {
       name: "PBKDF2",
 
-      salt,
+      salt: salt.slice(),
 
       iterations: 100000,
 
@@ -131,7 +131,7 @@ export async function encryptString(
     await crypto.subtle.encrypt(
       {
         name: "AES-GCM",
-        iv,
+        iv: iv.slice(),
       },
 
       key,
@@ -140,9 +140,13 @@ export async function encryptString(
     )
 
   return {
-    salt: toBase64(salt.buffer),
+    salt: toBase64(
+      salt.slice().buffer
+    ),
 
-    iv: toBase64(iv.buffer),
+    iv: toBase64(
+      iv.slice().buffer
+    ),
 
     ciphertext:
       toBase64(ciphertext),
@@ -181,12 +185,13 @@ export async function decryptString(
     await crypto.subtle.decrypt(
       {
         name: "AES-GCM",
-        iv,
+        iv: iv.slice(),
       },
 
       key,
 
-      ciphertext
+      ciphertext.slice()
+      .buffer
     )
 
   return decoder.decode(
