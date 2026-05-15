@@ -6,14 +6,21 @@ export function registerServiceWorker() {
     return
   }
 
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .catch((error) => {
-        console.error(
-          "Service worker registration failed",
-          error
-        )
-      })
-  })
+  navigator.serviceWorker
+    .register("/sw.js", {
+      updateViaCache: "none",
+    })
+    .then((registration) => {
+      if (registration.waiting) {
+        registration.waiting.postMessage({
+          type: "SKIP_WAITING",
+        })
+      }
+    })
+    .catch((error) => {
+      console.error(
+        "Service worker registration failed",
+        error
+      )
+    })
 }
