@@ -125,9 +125,11 @@ export default function App() {
         )
       }
           // ★ここ追加：起動時自動復元
-      setTimeout(() => {
-        restoreFromR2()
-      }, 300)
+          setTimeout(() => {
+        if (activePassword) {
+          restoreFromR2()
+        }
+      }, 1000)
     }
 
     init()
@@ -168,7 +170,31 @@ export default function App() {
     }
 
     loadNotes()
-  }, [selectedProjectId])
+    }, [selectedProjectId])
+
+  useEffect(() => {
+    async function loadHandle() {
+      const saved = await getHandle("backupDir")
+
+      if (!saved) return
+
+      try {
+        const permission = await saved.queryPermission({ mode: "readwrite" })
+
+        if (permission !== "granted") {
+          console.log("No permission for backup folder")
+          return
+        }
+
+        setBackupDirHandle(saved)
+        console.log("Backup folder restored")
+      } catch (e) {
+        console.error("Handle restore failed", e)
+      }
+    }
+
+    loadHandle()
+  }, [])
 
   //
   // selected note
@@ -225,6 +251,22 @@ export default function App() {
     backupDirHandle,
     setBackupDirHandle,
   ] = useState<any>(null)
+
+  //
+  // 定期バックアップ
+  //
+
+  useEffect(() => {
+    if (!backupDirHandle) return
+
+    const interval = setInterval(() => {
+  if (Date.now() - lastEditTime < 60_000) {
+    runLocalBackup()
+  }
+}, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [backupDirHandle])
 
   //
   // project作成
@@ -362,6 +404,8 @@ export default function App() {
   // note更新
   //
 
+  let lastEditTime = Date.now()
+  
   function updateNoteContent(
     content: string
   ) {
@@ -480,6 +524,64 @@ export default function App() {
       clearTimeout(timer)
     }
   }, [selectedNote])
+
+  async function runLocalBackup() {
+    if (!backupDirHandle) return
+
+    try {
+      const permission = await backupDirHandle.queryPermission({
+        mode: "readwrite",
+      })
+
+      if (permission !== "granted") return
+
+      const data = await exportData()
+
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")
+
+      const fileName = `backup-${timestamp}.json`
+
+      const fileHandle = await backupDirHandle.getFileHandle(
+        fileName,
+        { create: true }
+      )
+
+      const writable = await fileHandle.createWritable()
+
+      await writable.write(JSON.stringify(data, null, 2))
+      await writable.close()
+
+      await cleanupOldBackups()
+
+      console.log("local backup saved")
+    } catch (e) {
+      console.error("backup failed", e)
+    }
+  }
+
+  async function cleanupOldBackups() {
+    const files: FileSystemFileHandle[] = []
+
+    for await (const entry of backupDirHandle.values()) {
+      if (entry.kind === "file" && entry.name.startsWith("backup-")) {
+        files.push(entry)
+      }
+    }
+
+    if (files.length <= 500) return
+
+    const sorted = files.sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )
+
+    const toDelete = sorted.slice(0, sorted.length - 500)
+
+    for (const file of toDelete) {
+      await backupDirHandle.removeEntry(file.name)
+    }
+  }
 
   return (
     <div
@@ -1254,16 +1356,59 @@ export default function App() {
     alert("Worker URL saved")
   }
 
-  async function selectBackupFolder() {
-    try {
-      const dir =
-        await window.showDirectoryPicker()
+async function selectBackupFolder() {
+  try {
+    const dir = await window.showDirectoryPicker()
 
-      setBackupDirHandle(dir)
+    setBackupDirHandle(dir)
 
-      alert("Backup folder selected")
-    } catch {
-      alert("Folder selection cancelled")
-    }
+    await saveHandle("backupDir", dir)
+
+    alert("Backup folder selected")
+  } catch {
+    alert("Folder selection cancelled")
   }
+}
+}
+
+// ← Appコンポーネントの外ならどこでもOK
+
+const DB_NAME = "mininote-db"
+const STORE_NAME = "handles"
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1)
+
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(STORE_NAME)
+    }
+
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function saveHandle(key: string, value: any) {
+  const db = await openDB()
+
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite")
+    tx.objectStore(STORE_NAME).put(value, key)
+
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+async function getHandle(key: string): Promise<any> {
+  const db = await openDB()
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly")
+    const req = tx.objectStore(STORE_NAME).get(key)
+
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
 }
