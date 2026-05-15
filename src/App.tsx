@@ -1,7 +1,6 @@
 import React,{
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react"
 
@@ -107,9 +106,6 @@ export default function App() {
     setSaveStatus,
   ] = useState("Saved")
 
-  const lastEditTimeRef = useRef(0)
-  const lastBackupTimeRef = useRef(0)
-
   useEffect(() => {
     async function init() {
       const allProjects =
@@ -128,6 +124,12 @@ export default function App() {
           allProjects[0].id
         )
       }
+          // ★ここ追加：起動時自動復元
+          setTimeout(() => {
+        if (activePassword) {
+          restoreFromR2()
+        }
+      }, 1000)
     }
 
     init()
@@ -258,13 +260,10 @@ export default function App() {
     if (!backupDirHandle) return
 
     const interval = setInterval(() => {
-      if (
-        lastEditTimeRef.current >
-        lastBackupTimeRef.current
-      ) {
-        runLocalBackup()
-      }
-    }, 5 * 60 * 1000)
+    if (Date.now() - lastEditTime < 60_000) {
+      runLocalBackup()
+    }
+  }, 5 * 60 * 1000)
 
     return () => clearInterval(interval)
   }, [backupDirHandle])
@@ -405,22 +404,50 @@ export default function App() {
   // note更新
   //
 
-  function updateSelectedNote(
-    changes: Partial<
-      Pick<Note, "title" | "content">
-    >
+  let lastEditTime = Date.now()
+  
+  function updateNoteContent(
+    content: string
   ) {
     if (!selectedNote) return
 
-    lastEditTimeRef.current = Date.now()
-    setSaveStatus("Saving...")
+   setSaveStatus("Saving...") 
 
     const updated: Note = {
       ...selectedNote,
 
-      ...changes,
+      content,
 
-      updatedAt: lastEditTimeRef.current,
+
+      updatedAt: Date.now(),
+    }
+
+      setNotes((prev) =>
+        prev
+          .map((note) =>
+            note.id === updated.id
+              ? updated
+              : note
+          )
+          .sort(
+            (a, b) =>
+              b.updatedAt -
+              a.updatedAt
+          )
+      )
+  }
+
+  function updateNoteTitle(
+    title: string
+  ) {
+    if (!selectedNote) return
+
+    const updated: Note = {
+      ...selectedNote,
+
+      title,
+
+      updatedAt: Date.now(),
     }
 
     setNotes((prev) =>
@@ -438,122 +465,6 @@ export default function App() {
     )
   }
 
-  function updateNoteContent(
-    content: string
-  ) {
-    updateSelectedNote({
-      content,
-    })
-  }
-
-  function updateNoteTitle(
-    title: string
-  ) {
-    updateSelectedNote({
-      title,
-    })
-  }
-
-  function isProject(value: unknown): value is Project {
-    if (
-      !value ||
-      typeof value !== "object"
-    ) {
-      return false
-    }
-
-    const project = value as Project
-
-    return (
-      typeof project.id === "string" &&
-      typeof project.name === "string" &&
-      typeof project.createdAt === "number" &&
-      typeof project.updatedAt === "number"
-    )
-  }
-
-  function isNote(value: unknown): value is Note {
-    if (
-      !value ||
-      typeof value !== "object"
-    ) {
-      return false
-    }
-
-    const note = value as Note
-
-    return (
-      typeof note.id === "string" &&
-      typeof note.projectId === "string" &&
-      typeof note.title === "string" &&
-      typeof note.content === "string" &&
-      typeof note.createdAt === "number" &&
-      typeof note.updatedAt === "number"
-    )
-  }
-
-  function isBackupData(
-    value: unknown
-  ): value is {
-    projects: Project[]
-    notes: Note[]
-  } {
-    if (
-      !value ||
-      typeof value !== "object"
-    ) {
-      return false
-    }
-
-    const data = value as {
-      projects?: unknown
-      notes?: unknown
-    }
-
-    return (
-      Array.isArray(data.projects) &&
-      Array.isArray(data.notes) &&
-      data.projects.every(isProject) &&
-      data.notes.every(isNote)
-    )
-  }
-
-  async function importValidatedData(
-    data: unknown
-  ) {
-    if (!isBackupData(data)) {
-      alert("Invalid backup file")
-
-      return
-    }
-
-    const confirmed = confirm(
-      "Import will replace all current notes. Continue?"
-    )
-
-    if (!confirmed) return
-
-    await importData(data)
-
-    location.reload()
-  }
-
-  function getWorkerBaseUrl() {
-    return workerUrl.trim().replace(/\/+$/, "")
-  }
-
-  function requireWorkerUrl() {
-    const baseUrl = getWorkerBaseUrl()
-
-    if (!baseUrl) {
-      alert("Worker URL required")
-
-      return null
-    }
-
-    return baseUrl
-  }
-
   //
   // debounce保存
   //
@@ -561,49 +472,51 @@ export default function App() {
   useEffect(() => {
     if (!selectedNote) return
 
-    const timer = setTimeout(async () => {
-      await saveNote(selectedNote)
+    const timer = setTimeout(() => {
+      saveNote(selectedNote)
 
       if (backupDirHandle) {
-        const permission =
-          await backupDirHandle.queryPermission({
-            mode: "readwrite",
-          })
+        ;(async () => {
+          const permission =
+            await backupDirHandle.queryPermission({
+              mode: "readwrite",
+            })
 
-        if (permission !== "granted") {
-          setSaveStatus(
-            "Backup permission lost"
+          if (permission !== "granted") {
+            setSaveStatus(
+              "Backup permission lost"
+            )
+
+            return
+          }
+
+          const data =
+            await exportData()
+
+          const fileHandle =
+            await backupDirHandle.getFileHandle(
+              "notes-backup.json",
+              {
+                create: true,
+              }
+            )
+
+          const writable =
+            await fileHandle.createWritable()
+
+          await writable.write(
+            JSON.stringify(
+              data,
+              null,
+              2
+            )
           )
 
-          return
-        }
-
-        const data =
-          await exportData()
-
-        const fileHandle =
-          await backupDirHandle.getFileHandle(
-            "notes-backup.json",
-            {
-              create: true,
-            }
-          )
-
-        const writable =
-          await fileHandle.createWritable()
-
-        await writable.write(
-          JSON.stringify(
-            data,
-            null,
-            2
-          )
-        )
-
-        await writable.close()
+          await writable.close()
+        })()
       }
 
-      await uploadEncryptedBackup()
+      uploadEncryptedBackup()
       setSaveStatus("Saved")
     }, 500)
 
@@ -641,7 +554,6 @@ export default function App() {
       await writable.close()
 
       await cleanupOldBackups()
-      lastBackupTimeRef.current = Date.now()
 
       console.log("local backup saved")
     } catch (e) {
@@ -1292,18 +1204,14 @@ export default function App() {
 
     if (!file) return
 
-    try {
-      const text =
-        await file.text()
+    const text =
+      await file.text()
 
-      const data = JSON.parse(text)
+    const data = JSON.parse(text)
 
-      await importValidatedData(data)
-    } catch {
-      alert("Invalid JSON file")
-    } finally {
-      event.target.value = ""
-    }
+    await importData(data)
+
+    location.reload()
   }
 
   async function handleEncryptedImport(
@@ -1338,24 +1246,18 @@ export default function App() {
       const data =
         JSON.parse(json)
 
-      await importValidatedData(data)
+      await importData(data)
+
+      location.reload()
     } catch {
       alert(
         "Decrypt failed"
       )
-    } finally {
-      event.target.value = ""
     }
   }
 
     async function uploadEncryptedBackup() {
     if (!activePassword) {
-      return
-    }
-
-    const baseUrl = getWorkerBaseUrl()
-
-    if (!baseUrl) {
       return
     }
 
@@ -1373,7 +1275,7 @@ export default function App() {
         )
 
       await fetch(
-        `${baseUrl}/upload`,
+        `${workerUrl}/upload`,
         {
           method: "PUT",
 
@@ -1405,14 +1307,10 @@ export default function App() {
       return
     }
 
-    const baseUrl = requireWorkerUrl()
-
-    if (!baseUrl) return
-
     try {
       const response =
         await fetch(
-          `${baseUrl}/latest`
+          `${workerUrl}/latest`
         )
 
       if (!response.ok) {
@@ -1433,12 +1331,6 @@ export default function App() {
       const data =
         JSON.parse(json)
 
-      if (!isBackupData(data)) {
-        alert("Invalid backup data")
-
-        return
-      }
-
       await importData(data)
 
       alert(
@@ -1456,14 +1348,10 @@ export default function App() {
   }
 
   function saveWorkerUrl() {
-    const baseUrl = getWorkerBaseUrl()
-
     localStorage.setItem(
       "worker-url",
-      baseUrl
+      workerUrl
     )
-
-    setWorkerUrl(baseUrl)
 
     alert("Worker URL saved")
   }
@@ -1482,7 +1370,8 @@ async function selectBackupFolder() {
   }
 }
 }
-// Appコンポーネントの外ならどこでもOK
+
+// ← Appコンポーネントの外ならどこでもOK
 
 const DB_NAME = "mininote-db"
 const STORE_NAME = "handles"
@@ -1499,6 +1388,7 @@ function openDB(): Promise<IDBDatabase> {
     req.onerror = () => reject(req.error)
   })
 }
+
 async function saveHandle(key: string, value: any) {
   const db = await openDB()
 
