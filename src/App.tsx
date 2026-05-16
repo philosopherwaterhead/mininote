@@ -24,7 +24,7 @@ import {
   decryptString,
 } from "./crypto"
 
-import CodeMirror, { color } from "@uiw/react-codemirror"
+import CodeMirror from "@uiw/react-codemirror"
 
 import {
   markdown,
