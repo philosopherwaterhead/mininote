@@ -194,30 +194,21 @@ export default function App() {
 
   const editorTheme = EditorView.theme({
     "&": {
-      fontSize: "16px",
-      textAlign: "left",
       background: isMobile ? "#1e1e1e" : "white",
-      color: isMobile ? "#f5f5f5" : "black",
     },
 
     ".cm-content": {
-      fontFamily: "sans-serif",
-      padding: "16px",
-      lineHeight: "1.6",
-      textAlign: "left",
-      whiteSpace: "pre-wrap",
       color: isMobile ? "#f5f5f5" : "black",
       caretColor: isMobile ? "#f5f5f5" : "black",
     },
 
     ".cm-line": {
-      textAlign: "left",
       color: isMobile ? "#f5f5f5" : "black",
     },
 
     ".cm-gutters": {
-      background: isMobile ? "#1e1e1e" : "#f5f5f5",
-      color: isMobile ? "#aaa" : "#666",
+      background: "white",
+      color: "#888",
       border: "none",
     },
   })
@@ -1811,56 +1802,54 @@ export default function App() {
                 ]),
 
                 editorTheme,
-                
-                  syntaxHighlighting(
-                    HighlightStyle.define([
-                      {
-                        tag: tags.heading1,
-                        fontSize: "2em",
-                        fontWeight: "bold",
-                      },
-
-                      {
-                        tag: tags.heading2,
-                        fontSize: "1.5em",
-                        fontWeight: "bold",
-                      },
-
-                      {
-                        tag: tags.heading3,
-                        fontSize: "1.2em",
-                        fontWeight: "bold",
-                      },
-
-                      {
-                        tag: tags.quote,
-                        color: "#666",
-                        fontStyle: "italic",
-                      },
-
-                      {
-                        tag: tags.monospace,
-                        fontFamily: "monospace",
-                        backgroundColor: "#f0f0f0",
-                      },
-
-                      {
-                        tag: tags.link,
-                        color: "#3b82f6",
-                        textDecoration: "underline",
-                      },
-
-                      {
-                        tag: tags.strong,
-                        fontWeight: "bold",
-                      },
-
-                      {
-                        tag: tags.emphasis,
-                        fontStyle: "italic",
-                      },
-                    ])
-                  ),
+                syntaxHighlighting(
+                  HighlightStyle.define([
+                    {
+                      tag: tags.heading1,
+                      fontSize: "2em",
+                      fontWeight: "bold",
+                      color: isMobile ? "#f5f5f5" : "#000",
+                    },
+                    {
+                      tag: tags.heading2,
+                      fontSize: "1.5em",
+                      fontWeight: "bold",
+                      color: isMobile ? "#f5f5f5" : "#000",
+                    },
+                    {
+                      tag: tags.heading3,
+                      fontSize: "1.2em",
+                      fontWeight: "bold",
+                      color: isMobile ? "#f5f5f5" : "#000",
+                    },
+                    {
+                      tag: tags.quote,
+                      color: isMobile ? "#aaa" : "#666",
+                      fontStyle: "italic",
+                    },
+                    {
+                      tag: tags.monospace,
+                      fontFamily: "monospace",
+                      backgroundColor: isMobile ? "#333" : "#f0f0f0",
+                      color: isMobile ? "#f5f5f5" : "#000",
+                    },
+                    {
+                      tag: tags.link,
+                      color: "#3b82f6",
+                      textDecoration: "underline",
+                    },
+                    {
+                      tag: tags.strong,
+                      fontWeight: "bold",
+                      color: isMobile ? "#f5f5f5" : "#000",
+                    },
+                    {
+                      tag: tags.emphasis,
+                      fontStyle: "italic",
+                      color: isMobile ? "#f5f5f5" : "#000",
+                    },
+                  ])
+                ),
               ]}
               onChange={(value) =>
                 updateNoteContent(value)
