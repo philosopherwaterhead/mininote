@@ -267,6 +267,35 @@ export default function App() {
     )
   }, [notes, selectedNoteId])
 
+  useEffect(() => {
+  if (
+    selectedNote?.type !== "script"
+  ) {
+    return
+  }
+
+    requestAnimationFrame(() => {
+      const textareas =
+        document.querySelectorAll(
+          "textarea"
+        )
+
+      textareas.forEach((textarea) => {
+        if (
+          textarea instanceof
+          HTMLTextAreaElement
+        ) {
+          textarea.style.height =
+            "auto"
+
+          textarea.style.height =
+            textarea.scrollHeight +
+            "px"
+        }
+      })
+    })
+  }, [selectedNote])
+
   const wikiLinks = useMemo(() => {
     if (!selectedNote) return []
 
@@ -1447,6 +1476,22 @@ export default function App() {
           <textarea
             id={`right-${row.id}`}
             value={row.right}
+            style={{
+              overflow: "hidden",
+              resize: "none",
+            }}
+
+            rows={1}
+
+            onInput={(e) => {
+              const target =
+                e.target as HTMLTextAreaElement
+
+              target.style.height = "auto"
+              target.style.height =
+                target.scrollHeight + "px"
+            }}
+
             onChange={(e) => {
               const updatedRows =
                 selectedNote.scriptRows?.map(
