@@ -1317,6 +1317,11 @@ export default function App() {
 
                     removeNote(note.id)
                   }}
+                  style={{
+                    width: 18,
+                    height: 18,
+                    padding: 0,
+                  }}
                 >
                   <Icon name="trash" />
                 </button>
