@@ -882,13 +882,9 @@ export default function App() {
 
             zIndex: 999,
 
-            background: isMobile
-              ? "#1e1e1e"
-              : "white",
+            background:  "#1e1e1e",
 
-            color: isMobile
-              ? "#f5f5f5"
-              : "black",
+            color:  "#f5f5f5",
 
             boxShadow: isMobile
               ? "0 0 20px rgba(0,0,0,0.2)"
