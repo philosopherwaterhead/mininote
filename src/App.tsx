@@ -1094,6 +1094,14 @@ export default function App() {
           </div>
         </div>
         <button
+          onClick={selectBackupFolder}
+        >
+          <Icon name="folder" />
+          <span>Select Backup Folder</span>
+        </button>
+          </>
+        )}
+                <button
           onClick={handleManualR2Upload}
           disabled={uploadingR2 || !activePassword}
         >
@@ -1113,15 +1121,6 @@ export default function App() {
           <Icon name="cloudDownload" />
           <span>Restore From R2</span>
         </button>
-
-        <button
-          onClick={selectBackupFolder}
-        >
-          <Icon name="folder" />
-          <span>Select Backup Folder</span>
-        </button>
-          </>
-        )}
 
         <button
           onClick={createProject}
