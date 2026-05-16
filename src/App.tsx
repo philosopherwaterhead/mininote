@@ -192,6 +192,35 @@ export default function App() {
     setNoteSearch,
   ] = useState("")
 
+  const editorTheme = EditorView.theme({
+    "&": {
+      fontSize: "16px",
+      textAlign: "left",
+      background: isMobile ? "#1e1e1e" : "white",
+      color: isMobile ? "#f5f5f5" : "black",
+    },
+
+    ".cm-content": {
+      fontFamily: "sans-serif",
+      padding: "16px",
+      lineHeight: "1.6",
+      textAlign: "left",
+      whiteSpace: "pre-wrap",
+      color: isMobile ? "#f5f5f5" : "black",
+      caretColor: isMobile ? "#f5f5f5" : "black",
+    },
+
+    ".cm-line": {
+      textAlign: "left",
+      color: isMobile ? "#f5f5f5" : "black",
+    },
+
+    ".cm-gutters": {
+      background: isMobile ? "#1e1e1e" : "#f5f5f5",
+      color: isMobile ? "#aaa" : "#666",
+      border: "none",
+    },
+  })
   //
   // 初期読み込み
   //
@@ -1781,48 +1810,8 @@ export default function App() {
                   },
                 ]),
 
-                EditorView.theme({
-                  "&": {
-                    fontSize: "16px",
-                    textAlign: "left",
-                    background: "white",
-                    color: "black",
-                  },
-
-                  ".cm-content": {
-                    fontFamily:
-                      "sans-serif",
-
-                    padding: "16px",
-
-                    lineHeight: "1.6",
-
-                    textAlign: "left",
-
-                    whiteSpace: "pre-wrap",
-
-                    color: "black",
-                  },
-
-                  ".cm-line": {
-                    textAlign: "left",
-                  },
-
-                  ".cm-header-1": {
-                    fontSize: "2em",
-                    fontWeight: "bold",
-                  },
-
-                  ".cm-header-2": {
-                    fontSize: "1.5em",
-                    fontWeight: "bold",
-                  },
-
-                  ".cm-header-3": {
-                    fontSize: "1.2em",
-                    fontWeight: "bold",
-                  },
-                }),
+                editorTheme,
+                
                   syntaxHighlighting(
                     HighlightStyle.define([
                       {
