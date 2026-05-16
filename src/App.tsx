@@ -404,7 +404,7 @@ export default function App() {
     if (Date.now() - lastEditTime < 60_000) {
       runLocalBackup()
     }
-  }, 5 * 60 * 1000)
+  }, 30 * 1000)
 
     return () => clearInterval(interval)
   }, [backupDirHandle])
