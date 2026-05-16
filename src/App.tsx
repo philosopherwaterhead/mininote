@@ -119,6 +119,8 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
   const [projects, setProjects] =
     useState<Project[]>([])
 
@@ -805,6 +807,17 @@ export default function App() {
 
         <h2>Projects</h2>
 
+        <button
+          onClick={() =>
+            setSettingsOpen(v => !v)
+          }
+        >
+          ⚙ Settings
+        </button>
+
+        {settingsOpen && (
+          <>
+
         <div
           style={{
             display: "flex",
@@ -940,6 +953,8 @@ export default function App() {
           <Icon name="folder" />
           <span>Select Backup Folder</span>
         </button>
+          </>
+        )}
 
         <button
           onClick={createProject}
@@ -1002,6 +1017,12 @@ export default function App() {
 
                     moveProjectUp(project.id)
                   }}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      padding: 0,
+                      fontSize: 10,
+                    }}
                 >
                   ↑
                 </button>
@@ -1012,6 +1033,12 @@ export default function App() {
 
                     moveProjectDown(project.id)
                   }}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      padding: 0,
+                      fontSize: 10,
+                    }}
                 >
                   ↓
                 </button>
@@ -1020,6 +1047,11 @@ export default function App() {
                     e.stopPropagation()
 
                     removeProject(project.id)
+                  }}
+                  style={{
+                    width: 18,
+                    height: 18,
+                    padding: 0,
                   }}
                 >
                   <Icon name="trash" />
@@ -1139,6 +1171,12 @@ export default function App() {
 
                   moveNoteUp(note.id)
                 }}
+                style={{
+                      width: 18,
+                      height: 18,
+                      padding: 0,
+                      fontSize: 10,
+                    }}
               >
                 ↑
               </button>
@@ -1149,6 +1187,12 @@ export default function App() {
 
                   moveNoteDown(note.id)
                 }}
+                style={{
+                      width: 18,
+                      height: 18,
+                      padding: 0,
+                      fontSize: 10,
+                    }}
               >
                 ↓
               </button>
