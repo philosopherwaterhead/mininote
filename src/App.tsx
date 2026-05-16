@@ -121,6 +121,31 @@ export default function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  const [isMobile, setIsMobile] =
+  useState(
+    window.innerWidth < 700
+  )
+
+  useEffect(() => {
+  function onResize() {
+    setIsMobile(
+      window.innerWidth < 700
+    )
+  }
+
+  window.addEventListener(
+    "resize",
+    onResize
+  )
+
+  return () => {
+    window.removeEventListener(
+      "resize",
+      onResize
+    )
+    }
+  }, [])
+
   const [projects, setProjects] =
     useState<Project[]>([])
 
@@ -808,7 +833,8 @@ export default function App() {
     <div
       style={{
         display: "flex",
-        height: "100vh",
+        height: "100dvh",
+        overflow: "hidden",
       }}
     >
       <button
@@ -823,11 +849,34 @@ export default function App() {
         ☰
       </button>
       {sidebarOpen && (
-        <>
+        <div
+          style={{
+            display: "flex",
+
+            position: isMobile
+              ? "fixed"
+              : "relative",
+
+            top: 0,
+            left: 0,
+
+            height: "100dvh",
+
+            zIndex: 999,
+
+            background: "white",
+
+            boxShadow: isMobile
+              ? "0 0 20px rgba(0,0,0,0.2)"
+              : "none",
+          }}
+        >
       {/* PROJECTS */}
       <div
         style={{
-          width: 240,
+          width: isMobile
+                    ? 180
+                    : 240,
           borderRight:
             "1px solid #ccc",
           padding: 12,
@@ -1000,11 +1049,15 @@ export default function App() {
           {projects.map((project) => (
             <div
               key={project.id}
-              onClick={() =>
+              onClick={() => {
                 setSelectedProjectId(
                   project.id
                 )
-              }
+
+                if (isMobile) {
+                  setSidebarOpen(false)
+                }
+              }}
               style={{
                 padding: 8,
                 cursor: "pointer",
@@ -1094,7 +1147,9 @@ export default function App() {
       {/* NOTES */}
       <div
         style={{
-          width: 240,
+          width: isMobile
+            ? 180
+            : 240,
           borderRight:
             "1px solid #ccc",
           padding: 12,
@@ -1155,11 +1210,15 @@ export default function App() {
           {filteredNotes.map((note) => (
             <div
               key={note.id}
-              onClick={() =>
+              onClick={() => {
                 setSelectedNoteId(
                   note.id
                 )
-              }
+
+                if (isMobile) {
+                  setSidebarOpen(false)
+                }
+              }}
               style={{
                 padding: 8,
                 cursor: "pointer",
@@ -1239,7 +1298,7 @@ export default function App() {
           ))}
         </div>
       </div>
-        </>
+      </div>
       )}
 
       {/* EDITOR */}
@@ -1378,8 +1437,10 @@ export default function App() {
           style={{
             display: "grid",
             gridTemplateColumns:
-              "200px 1fr",
-            gap: 8,
+              isMobile
+                ? "1fr"
+                : "200px 1fr",
+            gap: 12,
             marginBottom: 8,
           }}
         >
