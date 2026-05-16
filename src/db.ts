@@ -9,17 +9,31 @@ export type Project = {
   id: string
   name: string
 
+  order: number
+
   createdAt: number
   updatedAt: number
 }
 
+export type ScriptRow = {
+  id: string
+  left: string
+  right: string
+}
+
 export type Note = {
   id: string
-
   projectId: string
 
+  order: number
+
   title: string
+
+  type?: "markdown" | "script"
+
   content: string
+
+  scriptRows?: ScriptRow[]
 
   createdAt: number
   updatedAt: number

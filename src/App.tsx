@@ -179,13 +179,11 @@ export default function App() {
       const allProjects =
         await getProjects()
 
-        setProjects(
-          allProjects.sort(
-            (a, b) =>
-              b.updatedAt -
-              a.updatedAt
-          )
+      setProjects(
+        allProjects.sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0)
         )
+      )
 
       if (allProjects.length > 0) {
         setSelectedProjectId(
@@ -217,9 +215,7 @@ export default function App() {
 
         setNotes(
           result.sort(
-            (a, b) =>
-              b.updatedAt -
-              a.updatedAt
+            (a, b) => (a.order ?? 0) - (b.order ?? 0)
           )
         )
 
@@ -341,6 +337,8 @@ export default function App() {
 
       name: "New Project",
 
+      order: projects.length,
+
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
@@ -348,8 +346,8 @@ export default function App() {
     await saveProject(newProject)
 
     setProjects((prev) => [
-      newProject,
       ...prev,
+      newProject,
     ])
 
     setSelectedProjectId(
@@ -375,19 +373,13 @@ export default function App() {
       updatedAt: Date.now(),
     }
 
-    setProjects((prev) =>
-      prev
-        .map((project) =>
-          project.id === projectId
-            ? updated
-            : project
-        )
-        .sort(
-          (a, b) =>
-            b.updatedAt -
-            a.updatedAt
-        )
+  setProjects((prev) =>
+    prev.map((project) =>
+      project.id === projectId
+        ? updated
+        : project
     )
+  )
 
     saveProject(updated)
   }
@@ -411,21 +403,101 @@ export default function App() {
       }
     }
 
+  async function moveProjectUp(
+      projectId: string
+    ) {
+      const index = projects.findIndex(
+        (p) => p.id === projectId
+      )
+
+      if (index <= 0) return
+
+      const next = [...projects]
+
+      ;[next[index - 1], next[index]] = [
+        next[index],
+        next[index - 1],
+      ]
+
+      const reordered = next.map(
+        (project, i) => ({
+          ...project,
+          order: i,
+        })
+      )
+
+    setProjects(reordered)
+
+    for (const project of reordered) {
+      await saveProject(project)
+    }
+  }
+
+    async function moveProjectDown(
+      projectId: string
+    ) {
+      const index = projects.findIndex(
+        (p) => p.id === projectId
+      )
+
+      if (
+        index === -1 ||
+        index >= projects.length - 1
+      ) {
+        return
+      }
+
+      const next = [...projects]
+
+      ;[next[index], next[index + 1]] = [
+        next[index + 1],
+        next[index],
+      ]
+
+      const reordered = next.map(
+        (project, i) => ({
+          ...project,
+          order: i,
+        })
+      )
+
+      setProjects(reordered)
+
+      for (const project of reordered) {
+        await saveProject(project)
+      }
+    }
+
   //
   // note作成
   //
 
-  async function createNote() {
+  async function createNote(type: "markdown" | "script") {
     if (!selectedProjectId) return
 
     const newNote: Note = {
       id: crypto.randomUUID(),
 
-      projectId:
-        selectedProjectId,
+      projectId: selectedProjectId,
+
+      order: notes.length,
+
+      type,
 
       title: "Untitled",
+
       content: "",
+
+      scriptRows:
+        type === "script"
+          ? [
+              {
+                id: crypto.randomUUID(),
+                left: "",
+                right: "",
+              },
+            ]
+          : undefined,
 
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -434,8 +506,8 @@ export default function App() {
     await saveNote(newNote)
 
     setNotes((prev) => [
-      newNote,
       ...prev,
+      newNote,
     ])
 
     setSelectedNoteId(
@@ -460,6 +532,71 @@ export default function App() {
       setSelectedNoteId(
         next[0]?.id ?? null
       )
+    }
+  }
+
+  async function moveNoteUp(
+    noteId: string
+  ) {
+    const index = notes.findIndex(
+      (n) => n.id === noteId
+    )
+
+    if (index <= 0) return
+
+    const next = [...notes]
+
+    ;[next[index - 1], next[index]] = [
+      next[index],
+      next[index - 1],
+    ]
+
+    const reordered = next.map(
+      (note, i) => ({
+        ...note,
+        order: i,
+      })
+    )
+
+    setNotes(reordered)
+
+    for (const note of reordered) {
+      await saveNote(note)
+    }
+  }
+
+  async function moveNoteDown(
+    noteId: string
+  ) {
+    const index = notes.findIndex(
+      (n) => n.id === noteId
+    )
+
+    if (
+      index === -1 ||
+      index >= notes.length - 1
+    ) {
+      return
+    }
+
+    const next = [...notes]
+
+    ;[next[index], next[index + 1]] = [
+      next[index + 1],
+      next[index],
+    ]
+
+    const reordered = next.map(
+      (note, i) => ({
+        ...note,
+        order: i,
+      })
+    )
+
+    setNotes(reordered)
+
+    for (const note of reordered) {
+      await saveNote(note)
     }
   }
 
@@ -492,11 +629,6 @@ export default function App() {
               ? updated
               : note
           )
-          .sort(
-            (a, b) =>
-              b.updatedAt -
-              a.updatedAt
-          )
       )
   }
 
@@ -519,11 +651,6 @@ export default function App() {
           note.id === updated.id
             ? updated
             : note
-        )
-        .sort(
-          (a, b) =>
-            b.updatedAt -
-            a.updatedAt
         )
     )
   }
@@ -869,7 +996,25 @@ export default function App() {
                     flex: 1,
                   }}
                 />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
 
+                    moveProjectUp(project.id)
+                  }}
+                >
+                  ↑
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+
+                    moveProjectDown(project.id)
+                  }}
+                >
+                  ↓
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -910,15 +1055,36 @@ export default function App() {
           }}
         />
 
-        <button
-          onClick={createNote}
-          disabled={
-            !selectedProjectId
-          }
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+          }}
         >
-          <Icon name="filePlus" />
-          <span>New Note</span>
-        </button>
+          <button
+            onClick={() =>
+              createNote("markdown")
+            }
+            disabled={
+              !selectedProjectId
+            }
+          >
+            <Icon name="filePlus" />
+            <span>Markdown</span>
+          </button>
+
+          <button
+            onClick={() =>
+              createNote("script")
+            }
+            disabled={
+              !selectedProjectId
+            }
+          >
+            <Icon name="filePlus" />
+            <span>Script</span>
+          </button>
+        </div>
 
         <div
           style={{
@@ -952,8 +1118,40 @@ export default function App() {
                   alignItems: "center",
                 }}
               >
-                <span>{note.title}</span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <span>
+                  {note.type === "script"
+                    ? "🗣️"
+                    : "📝"}
+                </span>
 
+                <span>{note.title}</span>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+
+                  moveNoteUp(note.id)
+                }}
+              >
+                ↑
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+
+                  moveNoteDown(note.id)
+                }}
+              >
+                ↓
+              </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -1063,6 +1261,309 @@ export default function App() {
             }}
           />
 
+{selectedNote.type === "script" ? (
+  <div>
+      <div
+    style={{
+      display: "flex",
+      gap: 8,
+      marginBottom: 12,
+    }}
+  >
+    <button
+      onClick={exportScriptCsv}
+    >
+      Export CSV
+    </button>
+
+    <label
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        cursor: "pointer",
+      }}
+    >
+      Import CSV
+
+      <input
+        type="file"
+        accept=".csv"
+        style={{
+          display: "none",
+        }}
+        onChange={
+          importScriptCsv
+        }
+      />
+    </label>
+  </div>
+    {selectedNote.scriptRows?.map(
+      (row) => (
+        <div
+          key={row.id}
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "200px 1fr",
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          <input
+            id={`left-${row.id}`}
+            value={row.left}
+
+            onKeyDown={(e) => {
+              const rows =
+                selectedNote.scriptRows ?? []
+
+              const index =
+                rows.findIndex(
+                  (r) => r.id === row.id
+                )
+
+              //
+              // Shift + Tab
+              // 前行の右へ
+              //
+
+              if (
+                e.key === "Tab" &&
+                e.shiftKey
+              ) {
+                e.preventDefault()
+
+                if (index > 0) {
+                  const prev =
+                    document.getElementById(
+                      `right-${rows[index - 1].id}`
+                    )
+
+                  if (
+                    prev instanceof
+                    HTMLTextAreaElement
+                  ) {
+                    prev.focus()
+                  }
+                }
+
+                return
+              }
+
+              //
+              // Tab
+              // 同じ行の右へ
+              //
+
+              if (e.key === "Tab") {
+                e.preventDefault()
+
+                const next =
+                  document.getElementById(
+                    `right-${row.id}`
+                  )
+
+                if (
+                  next instanceof
+                  HTMLTextAreaElement
+                ) {
+                  next.focus()
+                }
+              }
+            }}
+            onChange={(e) => {
+              const updatedRows =
+                selectedNote.scriptRows?.map(
+                  (r) =>
+                    r.id === row.id
+                      ? {
+                          ...r,
+                          left:
+                            e.target.value,
+                        }
+                      : r
+                )
+
+              setNotes((prev) =>
+                prev.map((note) =>
+                  note.id ===
+                  selectedNote.id
+                    ? {
+                        ...note,
+                        scriptRows:
+                          updatedRows,
+                      }
+                    : note
+                )
+              )
+            }}
+          />
+
+          <textarea
+            id={`right-${row.id}`}
+            value={row.right}
+            onChange={(e) => {
+              const updatedRows =
+                selectedNote.scriptRows?.map(
+                  (r) =>
+                    r.id === row.id
+                      ? {
+                          ...r,
+                          right:
+                            e.target.value,
+                        }
+                      : r
+                )
+
+              setNotes((prev) =>
+                prev.map((note) =>
+                  note.id ===
+                  selectedNote.id
+                    ? {
+                        ...note,
+                        scriptRows:
+                          updatedRows,
+                      }
+                    : note
+                )
+              )
+            }}
+          onKeyDown={(e) => {
+
+          if (
+            e.key === "Tab" &&
+            e.shiftKey
+          ) {
+            e.preventDefault()
+
+            const prev =
+              document.getElementById(
+                `left-${row.id}`
+              )
+
+            if (
+              prev instanceof
+              HTMLInputElement
+            ) {
+              prev.focus()
+            }
+
+            return
+          }
+
+            //
+            // Enter → 次行追加
+            //
+
+            if (e.key === "Enter") {
+              e.preventDefault()
+
+              const rows = [
+                ...(selectedNote.scriptRows ?? []),
+              ]
+
+              const index = rows.findIndex(
+                (r) => r.id === row.id
+              )
+
+              const newRowId = crypto.randomUUID()
+
+              rows.splice(index + 1, 0, {
+                id: newRowId,
+                left: "",
+                right: "",
+              })
+
+              setNotes((prev) =>
+                prev.map((note) =>
+                  note.id === selectedNote.id
+                    ? {
+                        ...note,
+                        scriptRows: rows,
+                      }
+                    : note
+                )
+              )
+
+              setTimeout(() => {
+                const next =
+                  document.getElementById(
+                    `left-${newRowId}`
+                  )
+
+                if (next instanceof HTMLInputElement) {
+                  next.focus()
+                }
+              }, 0)
+
+              return
+            }
+
+            //
+            // 空行Backspace → 行削除
+            //
+
+            if (
+              e.key === "Backspace" &&
+              row.left === "" &&
+              row.right === ""
+            ) {
+              e.preventDefault()
+
+              const rows = (
+                selectedNote.scriptRows ?? []
+              ).filter((r) => r.id !== row.id)
+
+              setNotes((prev) =>
+                prev.map((note) =>
+                  note.id === selectedNote.id
+                    ? {
+                        ...note,
+                        scriptRows: rows,
+                      }
+                    : note
+                )
+              )
+            }
+          }}
+          />
+        </div>
+      )
+    )}
+            <button
+              onClick={() => {
+                const updatedRows = [
+                  ...(selectedNote.scriptRows ?? []),
+
+                  {
+                    id: crypto.randomUUID(),
+                    left: "",
+                    right: "",
+                  },
+                ]
+
+                setNotes((prev) =>
+                  prev.map((note) =>
+                    note.id === selectedNote.id
+                      ? {
+                          ...note,
+                          scriptRows: updatedRows,
+                        }
+                      : note
+                  )
+                )
+              }}
+
+              style={{
+                marginTop: 12,
+                padding: "8px 12px",
+              }}
+            >
+              + Add Row
+            </button>
+              </div>
+            ) : (
             <CodeMirror
               value={selectedNote.content}
               height="100%"
@@ -1178,6 +1679,7 @@ export default function App() {
                 updateNoteContent(value)
               }
             />
+            )}
         </div>
       ) : (
         <p>No note selected</p>
@@ -1185,6 +1687,102 @@ export default function App() {
       </div>
     </div>
   )
+
+  async function exportScriptCsv() {
+    if (
+      !selectedNote ||
+      selectedNote.type !== "script"
+    ) {
+      return
+    }
+
+    const rows =
+      selectedNote.scriptRows ?? []
+
+    const csv = rows
+      .map((row) => {
+        const left =
+          row.left.replaceAll('"', '""')
+
+        const right =
+          row.right.replaceAll('"', '""')
+
+        return `"${left}","${right}"`
+      })
+      .join("\n")
+
+    const blob = new Blob(
+      [csv],
+      {
+        type: "text/csv",
+      }
+    )
+
+    const url =
+      URL.createObjectURL(blob)
+
+    const a =
+      document.createElement("a")
+
+    a.href = url
+
+    a.download =
+      `${selectedNote.title}.csv`
+
+    a.click()
+
+    URL.revokeObjectURL(url)
+  }
+
+  async function importScriptCsv(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    if (
+      !selectedNote ||
+      selectedNote.type !== "script"
+    ) {
+      return
+    }
+
+    const file =
+      event.target.files?.[0]
+
+    if (!file) return
+
+    const text =
+      await file.text()
+
+      const rows = text
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== "")
+      .map((line) => {
+        const cells = line.split(",")
+
+        return {
+          id: crypto.randomUUID(),
+
+          left:
+            (cells[0] ?? "").trim(),
+
+          right:
+            (cells
+              .slice(1)
+              .join(",") ?? ""
+            ).trim(),
+        }
+      })
+
+    setNotes((prev) =>
+      prev.map((note) =>
+        note.id === selectedNote.id
+          ? {
+              ...note,
+              scriptRows: rows,
+            }
+          : note
+      )
+    )
+  }
 
   async function handlePlainExport() {
     const data = await exportData()
