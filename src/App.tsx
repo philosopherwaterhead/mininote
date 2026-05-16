@@ -146,6 +146,9 @@ export default function App() {
     }
   }, [])
 
+  const [uploadingR2, setUploadingR2] = useState(false)
+  const [lastUploadTime, setLastUploadTime] = useState<number | null>(null)
+
   const [projects, setProjects] =
     useState<Project[]>([])
 
@@ -1092,14 +1095,18 @@ export default function App() {
         </div>
         <button
           onClick={handleManualR2Upload}
-          style={{
-            background: "#1677ff",
-            color: "white",
-          }}
+          disabled={uploadingR2 || !activePassword}
         >
           <Icon name="cloudDownload" />
-          <span>Upload to R2 Now</span>
+          <span>
+            {uploadingR2 ? "Uploading..." : "Upload to R2 Now"}
+          </span>
         </button>
+        <div style={{ marginTop: 12, fontSize: 12, color: "#666" }}>
+          {lastUploadTime
+            ? `Last upload: ${new Date(lastUploadTime).toLocaleString()}`
+            : "No upload yet"}
+        </div>
         <button
           onClick={restoreFromR2}
         >
@@ -2318,11 +2325,18 @@ async function handleManualR2Upload() {
   }
 
   try {
+    setUploadingR2(true)
+    setSaveStatus("Uploading to R2...")
+
     await uploadEncryptedBackup()
-    alert("R2 upload completed")
+
+    setSaveStatus("R2 uploaded")
+    setLastUploadTime(Date.now())
   } catch (e) {
     console.error(e)
-    alert("R2 upload failed")
+    setSaveStatus("R2 upload failed")
+  } finally {
+    setUploadingR2(false)
   }
 }
 }
