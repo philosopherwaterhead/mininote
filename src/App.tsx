@@ -1090,7 +1090,16 @@ export default function App() {
             />
           </div>
         </div>
-
+        <button
+          onClick={handleManualR2Upload}
+          style={{
+            background: "#1677ff",
+            color: "white",
+          }}
+        >
+          <Icon name="cloudDownload" />
+          <span>Upload to R2 Now</span>
+        </button>
         <button
           onClick={restoreFromR2}
         >
@@ -2302,7 +2311,20 @@ async function changePassword() {
     alert("Password change failed")
   }
 }
+async function handleManualR2Upload() {
+  if (!activePassword) {
+    alert("Password required")
+    return
+  }
 
+  try {
+    await uploadEncryptedBackup()
+    alert("R2 upload completed")
+  } catch (e) {
+    console.error(e)
+    alert("R2 upload failed")
+  }
+}
 }
 
 // ← Appコンポーネントの外ならどこでもOK
