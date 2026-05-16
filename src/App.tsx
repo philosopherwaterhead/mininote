@@ -1333,8 +1333,18 @@ export default function App() {
                     ? "🗣️"
                     : "📝"}
                 </span>
-
-                <span>{note.title}</span>
+              <span
+                style={{
+                  color:
+                    note.id === selectedNoteId && isMobile
+                      ? "black"
+                      : isMobile
+                      ? "#f5f5f5"
+                      : "black",
+                }}
+              >
+                {note.title}
+              </span>
               </div>
               <button
                 onClick={(e) => {
