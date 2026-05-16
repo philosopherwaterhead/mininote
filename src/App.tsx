@@ -848,6 +848,24 @@ export default function App() {
       >
         ☰
       </button>
+      {sidebarOpen && isMobile && (
+        <div
+          onClick={() =>
+            setSidebarOpen(false)
+          }
+
+          style={{
+            position: "fixed",
+
+            inset: 0,
+
+            background:
+              "rgba(0,0,0,0.4)",
+
+            zIndex: 998,
+          }}
+        />
+      )}
       {sidebarOpen && (
         <div
           style={{
