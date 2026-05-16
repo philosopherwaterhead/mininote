@@ -1333,6 +1333,8 @@ export default function App() {
         style={{
           flex: 1,
           padding: 16,
+          background: "white",
+          color: "black", 
         }}
       >
       {selectedNote ? (
@@ -1417,6 +1419,8 @@ export default function App() {
             style={{
               fontSize: 24,
               padding: 8,
+              background: "white",
+              color: "black",
             }}
           />
 
