@@ -198,12 +198,12 @@ export default function App() {
     },
 
     ".cm-content": {
-      color: isMobile ? "#f5f5f5" : "black",
-      caretColor: isMobile ? "#f5f5f5" : "black",
+      color: "black",
+      caretColor: "black",
     },
 
     ".cm-line": {
-      color: isMobile ? "#f5f5f5" : "black",
+      color: "black",
     },
 
     ".cm-gutters": {
@@ -1808,30 +1808,30 @@ export default function App() {
                       tag: tags.heading1,
                       fontSize: "2em",
                       fontWeight: "bold",
-                      color: isMobile ? "#f5f5f5" : "#000",
+                      color: "#000",
                     },
                     {
                       tag: tags.heading2,
                       fontSize: "1.5em",
                       fontWeight: "bold",
-                      color: isMobile ? "#f5f5f5" : "#000",
+                      color:  "#000",
                     },
                     {
                       tag: tags.heading3,
                       fontSize: "1.2em",
                       fontWeight: "bold",
-                      color: isMobile ? "#f5f5f5" : "#000",
+                      color: "#000",
                     },
                     {
                       tag: tags.quote,
-                      color: isMobile ? "#aaa" : "#666",
+                      color: "#666",
                       fontStyle: "italic",
                     },
                     {
                       tag: tags.monospace,
                       fontFamily: "monospace",
-                      backgroundColor: isMobile ? "#333" : "#f0f0f0",
-                      color: isMobile ? "#f5f5f5" : "#000",
+                      backgroundColor: "#333",
+                      color: "#f5f5f5" ,
                     },
                     {
                       tag: tags.link,
@@ -1841,12 +1841,12 @@ export default function App() {
                     {
                       tag: tags.strong,
                       fontWeight: "bold",
-                      color: isMobile ? "#f5f5f5" : "#000",
+                      color:  "#000",
                     },
                     {
                       tag: tags.emphasis,
                       fontStyle: "italic",
-                      color: isMobile ? "#f5f5f5" : "#000",
+                      color:  "#000",
                     },
                   ])
                 ),
