@@ -24,7 +24,7 @@ import {
   decryptString,
 } from "./crypto"
 
-import CodeMirror from "@uiw/react-codemirror"
+import CodeMirror, { color } from "@uiw/react-codemirror"
 
 import {
   markdown,
@@ -1785,6 +1785,8 @@ export default function App() {
                   "&": {
                     fontSize: "16px",
                     textAlign: "left",
+                    background: "white",
+                    color: "black",
                   },
 
                   ".cm-content": {
@@ -1798,6 +1800,8 @@ export default function App() {
                     textAlign: "left",
 
                     whiteSpace: "pre-wrap",
+
+                    color: "black",
                   },
 
                   ".cm-line": {
