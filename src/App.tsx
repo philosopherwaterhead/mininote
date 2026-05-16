@@ -882,7 +882,13 @@ export default function App() {
 
             zIndex: 999,
 
-            background: "white",
+            background: isMobile
+              ? "#1e1e1e"
+              : "white",
+
+            color: isMobile
+              ? "#f5f5f5"
+              : "black",
 
             boxShadow: isMobile
               ? "0 0 20px rgba(0,0,0,0.2)"
@@ -895,8 +901,9 @@ export default function App() {
           width: isMobile
                     ? 180
                     : 240,
-          borderRight:
-            "1px solid #ccc",
+          borderRight: isMobile
+            ? "1px solid #444"
+            : "1px solid #ccc",
           padding: 12,
         }}
       >
@@ -1083,7 +1090,9 @@ export default function App() {
                 background:
                   project.id ===
                   selectedProjectId
-                    ? "#eee"
+                    ? isMobile
+                      ? "#333"
+                      : "#eee"
                     : "transparent",
               }}
             >
