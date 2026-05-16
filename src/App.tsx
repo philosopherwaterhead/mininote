@@ -164,6 +164,9 @@ export default function App() {
     setActivePassword,
   ] = useState("")
 
+  const [newPassword, setNewPassword] = useState("")
+  const [pwChangeStatus, setPwChangeStatus] = useState("")
+
   const [
     workerUrl,
     setWorkerUrl,
@@ -949,16 +952,31 @@ export default function App() {
             marginBottom: 12,
           }}
         >
-          <button
-            onClick={resetAllData}
-            style={{
-              background: "#ff4d4f",
-              color: "white",
-            }}
-          >
-            <Icon name="trash" />
-            <span>Reset All Data</span>
+          <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            marginTop: 12,
+          }}
+        >
+          <h4>Change Password</h4>
+
+          <input
+            type="password"
+            placeholder="New password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+
+          <button onClick={changePassword}>
+            Update Password
           </button>
+
+          <div style={{ fontSize: 12, color: "#666" }}>
+            {pwChangeStatus}
+          </div>
+        </div>
           <input
             type="password"
             placeholder="Encryption Password"
@@ -2154,42 +2172,50 @@ export default function App() {
   }
 
   async function restoreFromR2() {
-  if (!activePassword) {
-    alert("Password required")
-    return
-  }
-
-  try {
-    const response =
-      await fetch(`${workerUrl}/latest`)
-
-    // ★ Step2（ここ）
-    console.log("status", response.status)
-
-    const text = await response.text()
-    console.log("raw response", text)
-
-    // JSONに戻す
-    const encrypted = JSON.parse(text)
-
-    const json =
-      await decryptString(
-        encrypted,
-        activePassword
+    if (!activePassword) {
+      alert(
+        "Password required"
       )
 
-    const data = JSON.parse(json)
+      return
+    }
 
-    await importData(data)
+    try {
+      const response =
+        await fetch(
+          `${workerUrl}/latest`
+        )
 
-    alert("Restore completed")
-    location.reload()
+      if (!response.ok) {
+        alert("No backup found")
 
-  } catch (error) {
+        return
+      }
+
+      const encrypted =
+        await response.json()
+
+      const json =
+        await decryptString(
+          encrypted,
+          activePassword
+        )
+
+      const data =
+        JSON.parse(json)
+
+      await importData(data)
+
+      alert(
+        "Restore completed"
+      )
+
+      location.reload()
+    } catch (error) {
     console.error("RESTORE ERROR:", error)
     alert(String(error))
   }
-}
+  }
 
   function saveWorkerUrl() {
     localStorage.setItem(
@@ -2214,35 +2240,38 @@ async function selectBackupFolder() {
   }
 }
 
-async function resetAllData() {
+async function changePassword() {
   if (!activePassword) {
-    alert("Password required")
+    alert("Current password missing")
     return
   }
 
-  const ok = confirm(
-    "すべてのデータを削除して初期化します。本当に続行しますか？"
-  )
+  if (!newPassword) {
+    alert("New password required")
+    return
+  }
 
-  if (!ok) return
-
-  const emptyData = {
-    projects: [],
-    notes: [],
+  if (newPassword.length < 8) {
+    alert("Password too weak (min 8 chars)")
+    return
   }
 
   try {
-    // ローカル初期化
-    await importData(emptyData)
+    setPwChangeStatus("Processing...")
 
-    // R2にも空データを保存（暗号化）
-    const json = JSON.stringify(emptyData)
+    // ① 現在のデータを取得（復号済み状態）
+    const data = await exportData()
 
+    // ② 平文化
+    const json = JSON.stringify(data)
+
+    // ③ 新パスワードで再暗号化
     const encrypted = await encryptString(
       json,
-      activePassword
+      newPassword
     )
 
+    // ④ R2へ上書き
     await fetch(`${workerUrl}/upload`, {
       method: "PUT",
       headers: {
@@ -2251,13 +2280,19 @@ async function resetAllData() {
       body: JSON.stringify(encrypted),
     })
 
-    alert("Reset completed")
-    location.reload()
+    // ⑤ 状態更新
+    setActivePassword(newPassword)
+    setNewPassword("")
+    setPwChangeStatus("Done")
+
+    alert("Password updated successfully")
   } catch (e) {
     console.error(e)
-    alert("Reset failed")
+    setPwChangeStatus("Failed")
+    alert("Password change failed")
   }
 }
+
 }
 
 // ← Appコンポーネントの外ならどこでもOK
