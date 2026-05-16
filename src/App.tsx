@@ -2144,53 +2144,42 @@ export default function App() {
   }
 
   async function restoreFromR2() {
-    if (!activePassword) {
-      alert(
-        "Password required"
-      )
-
-      return
-    }
-
-    try {
-      const response =
-        await fetch(
-          `${workerUrl}/latest`
-        )
-
-      if (!response.ok) {
-        alert("No backup found")
-
-        return
-      }
-
-      const encrypted =
-        await response.json()
-
-      const json =
-        await decryptString(
-          encrypted,
-          activePassword
-        )
-
-      const data =
-        JSON.parse(json)
-
-      await importData(data)
-
-      alert(
-        "Restore completed"
-      )
-
-      location.reload()
-    } catch (error) {
-      console.error(error)
-
-      alert(
-        "Restore failed"
-      )
-    }
+  if (!activePassword) {
+    alert("Password required")
+    return
   }
+
+  try {
+    const response =
+      await fetch(`${workerUrl}/latest`)
+
+    // ★ Step2（ここ）
+    console.log("status", response.status)
+
+    const text = await response.text()
+    console.log("raw response", text)
+
+    // JSONに戻す
+    const encrypted = JSON.parse(text)
+
+    const json =
+      await decryptString(
+        encrypted,
+        activePassword
+      )
+
+    const data = JSON.parse(json)
+
+    await importData(data)
+
+    alert("Restore completed")
+    location.reload()
+
+  } catch (error) {
+    console.error("RESTORE ERROR:", error)
+    alert(String(error))
+  }
+}
 
   function saveWorkerUrl() {
     localStorage.setItem(
