@@ -949,6 +949,16 @@ export default function App() {
             marginBottom: 12,
           }}
         >
+          <button
+            onClick={resetAllData}
+            style={{
+              background: "#ff4d4f",
+              color: "white",
+            }}
+          >
+            <Icon name="trash" />
+            <span>Reset All Data</span>
+          </button>
           <input
             type="password"
             placeholder="Encryption Password"
@@ -2201,6 +2211,51 @@ async function selectBackupFolder() {
     alert("Backup folder selected")
   } catch {
     alert("Folder selection cancelled")
+  }
+}
+
+async function resetAllData() {
+  if (!activePassword) {
+    alert("Password required")
+    return
+  }
+
+  const ok = confirm(
+    "すべてのデータを削除して初期化します。本当に続行しますか？"
+  )
+
+  if (!ok) return
+
+  const emptyData = {
+    projects: [],
+    notes: [],
+  }
+
+  try {
+    // ローカル初期化
+    await importData(emptyData)
+
+    // R2にも空データを保存（暗号化）
+    const json = JSON.stringify(emptyData)
+
+    const encrypted = await encryptString(
+      json,
+      activePassword
+    )
+
+    await fetch(`${workerUrl}/upload`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(encrypted),
+    })
+
+    alert("Reset completed")
+    location.reload()
+  } catch (e) {
+    console.error(e)
+    alert("Reset failed")
   }
 }
 }
