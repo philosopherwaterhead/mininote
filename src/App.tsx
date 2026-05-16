@@ -1208,6 +1208,10 @@ export default function App() {
             onClick={() =>
               createNote("markdown")
             }
+            style={{
+              flex: 1,
+              minWidth: 0,
+            }}
             disabled={
               !selectedProjectId
             }
@@ -1220,6 +1224,10 @@ export default function App() {
             onClick={() =>
               createNote("script")
             }
+            style={{
+              flex: 1,
+              minWidth: 0,
+            }}
             disabled={
               !selectedProjectId
             }
